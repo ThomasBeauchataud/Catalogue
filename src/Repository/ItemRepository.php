@@ -42,4 +42,36 @@ class ItemRepository extends ServiceEntityRepository
         return $this->findBy(["privateMagento" => false]);
     }
 
+    /**
+     * @param Item $item
+     * @return Item[]
+     */
+    public function findSimilar(Item $item): array
+    {
+        return $this->createQueryBuilder('i')
+            ->where('i.ean = :ean')
+            ->orWhere('i.cip = :cip')
+            ->orWhere('i.cip7 = :cip7')
+            ->orWhere('i.name = :name')
+            ->setParameter(':ean', $item->getEan())
+            ->setParameter(':cip', $item->getCip())
+            ->setParameter(':name', $item->getName())
+            ->setParameter(':cip7', $item->getCip7())
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @param array $names
+     * @return array
+     */
+    public function findByNames(array $names): array
+    {
+        return $this->createQueryBuilder('i')
+            ->where('i.name IN (:names)')
+            ->setParameter(':names', $names)
+            ->getQuery()
+            ->getResult();
+    }
+
 }

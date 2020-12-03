@@ -5,11 +5,13 @@ namespace App\Controller;
 
 
 use App\Entity\Item;
-use App\Service\ItemCreation;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\ClientRepository;
+use App\Service\Item\ItemCreationList;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -25,19 +27,19 @@ class ItemController extends AbstractController
     protected ValidatorInterface $validator;
 
     /**
-     * @var EntityManagerInterface
+     * @var ClientRepository
      */
-    protected EntityManagerInterface $em;
+    protected ClientRepository $clientRepository;
 
     /**
      * ItemController constructor.
      * @param ValidatorInterface $validator
-     * @param EntityManagerInterface $em
+     * @param ClientRepository $clientRepository
      */
-    public function __construct(ValidatorInterface $validator, EntityManagerInterface $em)
+    public function __construct(ValidatorInterface $validator, ClientRepository $clientRepository)
     {
         $this->validator = $validator;
-        $this->em = $em;
+        $this->clientRepository = $clientRepository;
     }
 
 
@@ -60,35 +62,21 @@ class ItemController extends AbstractController
     }
 
     /**
-     * @Route("", name="insert", methods={"GET"})
+     * @Route("", name="insert", methods={"PUT"})
      * @param Request $request
      * @return Response
      */
     public function insert(Request $request): Response
     {
-        $content = json_decode($request->getContent(), true);
-        if (!is_array($content)) {
-            return new Response("KO");
+        try {
+            $client = $this->clientRepository->findOneBy(["ip" => $request->getClientIp()]);
+            $itemCreationList = new ItemCreationList($client, $request->getContent());
+            $envelope = $this->dispatchMessage($itemCreationList);
+            $content = $envelope->last(HandledStamp::class)->getResult();
+            return new Response(json_encode(array("code" =>"OK", "content" => $content)));
+        } catch (Exception $e) {
+            return new Response(json_encode(array("code" => "KO", "content" => $e->getMessage())));
         }
-        $errors = array();
-        foreach ($content as $itemContent) {
-            $itemCreation = new ItemCreation($itemContent);
-            $violations = $this->validator->validate($itemCreation);
-            if (count($violations) > 0) {
-                $error = array();
-                for ($i = 0; $i < $violations->count(); $i++) {
-                    $error[] = $violations->get($i)->getMessage();
-                }
-                $errors[] = $error;
-                continue;
-            }
-            $this->em->persist($itemCreation->getItem());
-        }
-        $this->em->flush();
-        if (count($errors) > 0) {
-            return new Response(json_encode($errors));
-        }
-        return new Response("OK");
     }
 
 }

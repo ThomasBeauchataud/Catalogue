@@ -5,7 +5,6 @@ namespace App\Entity;
 
 
 use App\Repository\ItemRepository;
-use App\Service\Constraint\ItemCreationConstraint;
 use DateTime;
 use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,6 +24,11 @@ class Item
     private int $id;
 
     /**
+     * @ORM\Column(type="integer")
+     */
+    private int $referentId;
+
+    /**
      * @ORM\Column(type="string", length=50)
      */
     private string $ean;
@@ -33,6 +37,11 @@ class Item
      * @ORM\Column(type="string", length=50)
      */
     private string $cip;
+
+    /**
+     * @ORM\Column(type="string", length=50)
+     */
+    private string $cip7;
 
     /**
      * @ORM\Column(type="string", length=255)
@@ -46,11 +55,6 @@ class Item
     private DateTimeInterface $creationDate;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Item::class)
-     */
-    private Item $referent;
-
-    /**
      * @ORM\Column(type="boolean")
      */
     private bool $privateMagento;
@@ -60,10 +64,19 @@ class Item
      */
     public function __construct()
     {
+        $this->referentId = 0;
         $this->privateMagento = false;
         $this->creationDate = new DateTime();
     }
 
+
+    /**
+     * @param int $id
+     */
+    public function setId(int $id): void
+    {
+        $this->id = $id;
+    }
 
     /**
      * @return int|null
@@ -71,6 +84,22 @@ class Item
     public function getId(): int
     {
         return $this->id;
+    }
+
+    /**
+     * @return int
+     */
+    public function getReferentId(): int
+    {
+        return $this->referentId;
+    }
+
+    /**
+     * @param int $referentId
+     */
+    public function setReferentId(int $referentId): void
+    {
+        $this->referentId = $referentId;
     }
 
     /**
@@ -108,6 +137,22 @@ class Item
     /**
      * @return string
      */
+    public function getCip7(): string
+    {
+        return $this->cip7;
+    }
+
+    /**
+     * @param string $cip7
+     */
+    public function setCip7(string $cip7): void
+    {
+        $this->cip7 = $cip7;
+    }
+
+    /**
+     * @return string
+     */
     public function getName(): string
     {
         return $this->name;
@@ -135,22 +180,6 @@ class Item
     public function setCreationDate(DateTimeInterface $creationDate): void
     {
         $this->creationDate = $creationDate;
-    }
-
-    /**
-     * @return Item
-     */
-    public function getReferent(): Item
-    {
-        return $this->referent;
-    }
-
-    /**
-     * @param Item $referent
-     */
-    public function setReferent(Item $referent): void
-    {
-        $this->referent = $referent;
     }
 
     /**
@@ -182,7 +211,7 @@ class Item
             "id" => $this->id
         );
         if ($this->privateMagento) {
-            $content["referent"] = $this->referent->getId();
+            $content["referentId"] = $this->referentId;
         }
         return $content;
     }
